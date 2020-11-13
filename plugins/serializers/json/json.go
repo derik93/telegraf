@@ -49,15 +49,17 @@ func (s *serializer) SerializeBatch(metrics []telegraf.Metric) ([]byte, error) {
 }
 
 func (s *serializer) createObject(metric telegraf.Metric) map[string]interface{} {
-	m := make(map[string]interface{}, 4)
 
-	tags := make(map[string]string, len(metric.TagList()))
+
+	m := make(map[string]interface{}, 2 + len(metric.TagList())+ len(metric.FieldList()))
+
+	//tags := make(map[string]string, len(metric.TagList()))
 	for _, tag := range metric.TagList() {
-		tags[tag.Key] = tag.Value
+		m[tag.Key] = tag.Value
 	}
-	m["tags"] = tags
+	//m["tags"] = tags
 
-	fields := make(map[string]interface{}, len(metric.FieldList()))
+	//fields := make(map[string]interface{}, len(metric.FieldList()))
 	for _, field := range metric.FieldList() {
 		switch fv := field.Value.(type) {
 		case float64:
@@ -66,9 +68,10 @@ func (s *serializer) createObject(metric telegraf.Metric) map[string]interface{}
 				continue
 			}
 		}
-		fields[field.Key] = field.Value
+
+		m[field.Key] = field.Value
 	}
-	m["fields"] = fields
+	//m["fields"] = fields
 
 	m["name"] = metric.Name()
 	m["timestamp"] = metric.Time().UnixNano() / int64(s.TimestampUnits)
