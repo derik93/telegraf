@@ -14,6 +14,7 @@ import (
 	tlsint "github.com/influxdata/telegraf/plugins/common/tls"
 	"github.com/influxdata/telegraf/plugins/outputs"
 	"github.com/influxdata/telegraf/plugins/serializers"
+
 )
 
 var ValidTopicSuffixMethods = []string{
@@ -24,6 +25,18 @@ var ValidTopicSuffixMethods = []string{
 
 var zeroTime = time.Unix(0, 0)
 
+
+const (
+	carbon2FormatFieldEmpty          = format("")
+	Carbon2FormatFieldSeparate       = format("field_separate")
+	Carbon2FormatMetricIncludesField = format("metric_includes_field")
+)
+
+var formats = map[format]struct{}{
+	carbon2FormatFieldEmpty:          {},
+	Carbon2FormatFieldSeparate:       {},
+	Carbon2FormatMetricIncludesField: {},
+}
 type (
 	Kafka struct {
 		Brokers          []string    `toml:"brokers"`
@@ -372,12 +385,19 @@ func (k *Kafka) routingKey(metric telegraf.Metric) (string, error) {
 	return k.RoutingKey, nil
 }
 
+
+
+
 func (k *Kafka) Write(metrics []telegraf.Metric) error {
 	msgs := make([]*sarama.ProducerMessage, 0, len(metrics))
 	for _, metric := range metrics {
 		metric, topic := k.GetTopicName(metric)
 
-		buf, err := k.serializer.Serialize(metric)
+		s := Serializer{}
+
+        buf, err :=  s.Serialize(metric)
+
+		//buf, err := k.serializer.Serialize(metric)
 		if err != nil {
 			k.Log.Debugf("Could not serialize metric: %v", err)
 			continue
@@ -393,6 +413,7 @@ func (k *Kafka) Write(metrics []telegraf.Metric) error {
 			m.Timestamp = metric.Time()
 		}
 
+
 		key, err := k.routingKey(metric)
 		if err != nil {
 			return fmt.Errorf("could not generate routing key: %v", err)
@@ -402,6 +423,10 @@ func (k *Kafka) Write(metrics []telegraf.Metric) error {
 			m.Key = sarama.StringEncoder(key)
 		}
 		msgs = append(msgs, m)
+
+
+
+
 	}
 
 	err := k.producer.SendMessages(msgs)
